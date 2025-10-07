@@ -1,0 +1,280 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.CAFS = void 0;
+const crypto_1 = require("crypto");
+const gcs_utils_1 = require("./gcs-utils");
+/**
+ * Content Addressable File Storage (CAFS) implementation
+ * Provides deduplication and content-based addressing for resources
+ */
+class CAFS {
+    constructor(config = {}) {
+        this.config = {
+            bucketName: config.bucketName || process.env.BUCKET_NAME || 'tp-resources',
+            metadataCollection: config.metadataCollection || 'cafs_metadata',
+            enableDeduplication: config.enableDeduplication ?? true,
+            maxFileSize: config.maxFileSize || 10 * 1024 * 1024, // 10MB default
+            defaultContentType: config.defaultContentType || 'application/json'
+        };
+        this.gcsUtils = new gcs_utils_1.GCSUtils(this.config.bucketName);
+    }
+    /**
+     * Stores content in CAFS with deduplication
+     * @param content The content to store
+     * @param metadata Optional metadata
+     * @returns CAFS operation result
+     */
+    async storeContent(content, metadata = {}) {
+        try {
+            // Validate content size
+            const contentSize = Buffer.byteLength(content, 'utf8');
+            if (contentSize > this.config.maxFileSize) {
+                return {
+                    success: false,
+                    contentHash: '',
+                    deduplicated: false,
+                    storagePath: '',
+                    error: `Content size ${contentSize} exceeds maximum allowed size ${this.config.maxFileSize}`
+                };
+            }
+            // Generate content hash
+            const contentHash = this.generateContentHash(content);
+            const storagePath = this.getStoragePath(contentHash);
+            // Check if content already exists (deduplication)
+            if (this.config.enableDeduplication) {
+                const exists = await this.gcsUtils.fileExists(storagePath);
+                if (exists) {
+                    // Content already exists, just update reference count
+                    await this.updateReferenceCount(contentHash, 1);
+                    return {
+                        success: true,
+                        contentHash,
+                        deduplicated: true,
+                        storagePath
+                    };
+                }
+            }
+            // Store new content
+            const fullMetadata = {
+                contentSize,
+                contentType: metadata.contentType || this.config.defaultContentType,
+                createdAt: new Date(),
+                lastAccessedAt: new Date(),
+                referenceCount: 1,
+                tags: metadata.tags || [],
+                customProperties: metadata.customProperties || {}
+            };
+            // Store content in GCS
+            await this.gcsUtils.writeRawContent(storagePath, content, fullMetadata.contentType);
+            // Create CAFS entry
+            const cafsEntry = {
+                contentHash,
+                gcsPath: storagePath,
+                metadata: fullMetadata,
+                referencedBy: []
+            };
+            // Store CAFS metadata (in a real implementation, this would go to Firestore)
+            await this.storeCAFSMetadata(cafsEntry);
+            return {
+                success: true,
+                contentHash,
+                deduplicated: false,
+                storagePath
+            };
+        }
+        catch (error) {
+            return {
+                success: false,
+                contentHash: '',
+                deduplicated: false,
+                storagePath: '',
+                error: `Failed to store content: ${error}`
+            };
+        }
+    }
+    /**
+     * Retrieves content from CAFS by hash
+     * @param contentHash The SHA-256 hash of the content
+     * @param updateAccessTime Whether to update last accessed time
+     * @returns The content string
+     */
+    async retrieveContent(contentHash, updateAccessTime = true) {
+        try {
+            const storagePath = this.getStoragePath(contentHash);
+            // Check if content exists
+            const exists = await this.gcsUtils.fileExists(storagePath);
+            if (!exists) {
+                throw new Error(`Content with hash ${contentHash} not found`);
+            }
+            // Retrieve content
+            const content = await this.gcsUtils.readRawContent(storagePath);
+            // Verify content hash
+            const actualHash = this.generateContentHash(content);
+            if (actualHash !== contentHash) {
+                throw new Error(`Content hash mismatch. Expected: ${contentHash}, Actual: ${actualHash}`);
+            }
+            // Update access time if requested
+            if (updateAccessTime) {
+                await this.updateLastAccessTime(contentHash);
+            }
+            return content;
+        }
+        catch (error) {
+            throw new Error(`Failed to retrieve content: ${error}`);
+        }
+    }
+    /**
+     * Checks if content exists in CAFS
+     * @param contentHash The SHA-256 hash to check
+     * @returns True if content exists, false otherwise
+     */
+    async contentExists(contentHash) {
+        const storagePath = this.getStoragePath(contentHash);
+        return await this.gcsUtils.fileExists(storagePath);
+    }
+    /**
+     * Deletes content from CAFS (decrements reference count)
+     * @param contentHash The SHA-256 hash of the content
+     * @param forceDelete Whether to force delete regardless of reference count
+     */
+    async deleteContent(contentHash, forceDelete = false) {
+        try {
+            const cafsEntry = await this.getCAFSMetadata(contentHash);
+            if (!cafsEntry) {
+                throw new Error(`CAFS entry not found for hash ${contentHash}`);
+            }
+            if (!forceDelete) {
+                // Decrement reference count
+                const newRefCount = Math.max(0, cafsEntry.metadata.referenceCount - 1);
+                await this.updateReferenceCount(contentHash, -1);
+                // Only delete if reference count reaches zero
+                if (newRefCount > 0) {
+                    return;
+                }
+            }
+            // Delete from GCS
+            await this.gcsUtils.deleteFile(cafsEntry.gcsPath);
+            // Delete CAFS metadata
+            await this.deleteCAFSMetadata(contentHash);
+        }
+        catch (error) {
+            throw new Error(`Failed to delete content: ${error}`);
+        }
+    }
+    /**
+     * Gets CAFS entry metadata
+     * @param contentHash The SHA-256 hash
+     * @returns CAFS entry or null if not found
+     */
+    async getCAFSEntry(contentHash) {
+        return await this.getCAFSMetadata(contentHash);
+    }
+    /**
+     * Lists all CAFS entries with optional filtering
+     * @param filter Optional filter function
+     * @returns Array of CAFS entries
+     */
+    async listCAFSEntries(filter) {
+        // In a real implementation, this would query Firestore
+        // For now, we'll list files in the CAFS directory
+        const files = await this.gcsUtils.listFiles('cafs/');
+        const entries = [];
+        for (const file of files) {
+            if (file.endsWith('.json'))
+                continue; // Skip metadata files
+            const hash = this.extractHashFromPath(file);
+            if (hash) {
+                const entry = await this.getCAFSMetadata(hash);
+                if (entry && (!filter || filter(entry))) {
+                    entries.push(entry);
+                }
+            }
+        }
+        return entries;
+    }
+    /**
+     * Generates SHA-256 hash of content
+     * @param content The content to hash
+     * @returns The SHA-256 hash as hex string
+     */
+    generateContentHash(content) {
+        return (0, crypto_1.createHash)('sha256').update(content).digest('hex');
+    }
+    /**
+     * Gets the storage path for a content hash
+     * @param contentHash The SHA-256 hash
+     * @returns The GCS storage path
+     */
+    getStoragePath(contentHash) {
+        // Use first 2 characters for directory structure to avoid too many files in one directory
+        const prefix = contentHash.substring(0, 2);
+        return `cafs/${prefix}/${contentHash}`;
+    }
+    /**
+     * Stores CAFS metadata (placeholder for Firestore integration)
+     * @param entry The CAFS entry to store
+     */
+    async storeCAFSMetadata(entry) {
+        // In a real implementation, this would store in Firestore
+        // For now, store as JSON file in GCS
+        const metadataPath = `cafs/metadata/${entry.contentHash}.json`;
+        const metadataContent = JSON.stringify(entry, null, 2);
+        await this.gcsUtils.writeRawContent(metadataPath, metadataContent, 'application/json');
+    }
+    /**
+     * Retrieves CAFS metadata (placeholder for Firestore integration)
+     * @param contentHash The content hash
+     * @returns CAFS entry or null
+     */
+    async getCAFSMetadata(contentHash) {
+        try {
+            const metadataPath = `cafs/metadata/${contentHash}.json`;
+            const metadataContent = await this.gcsUtils.readRawContent(metadataPath);
+            return JSON.parse(metadataContent);
+        }
+        catch (error) {
+            return null;
+        }
+    }
+    /**
+     * Deletes CAFS metadata
+     * @param contentHash The content hash
+     */
+    async deleteCAFSMetadata(contentHash) {
+        const metadataPath = `cafs/metadata/${contentHash}.json`;
+        await this.gcsUtils.deleteFile(metadataPath);
+    }
+    /**
+     * Updates reference count for a CAFS entry
+     * @param contentHash The content hash
+     * @param delta The change in reference count
+     */
+    async updateReferenceCount(contentHash, delta) {
+        const entry = await this.getCAFSMetadata(contentHash);
+        if (entry) {
+            entry.metadata.referenceCount = Math.max(0, entry.metadata.referenceCount + delta);
+            await this.storeCAFSMetadata(entry);
+        }
+    }
+    /**
+     * Updates last access time for a CAFS entry
+     * @param contentHash The content hash
+     */
+    async updateLastAccessTime(contentHash) {
+        const entry = await this.getCAFSMetadata(contentHash);
+        if (entry) {
+            entry.metadata.lastAccessedAt = new Date();
+            await this.storeCAFSMetadata(entry);
+        }
+    }
+    /**
+     * Extracts hash from storage path
+     * @param path The storage path
+     * @returns The hash or null
+     */
+    extractHashFromPath(path) {
+        const match = path.match(/cafs\/[a-f0-9]{2}\/([a-f0-9]{64})/);
+        return match ? match[1] : null;
+    }
+}
+exports.CAFS = CAFS;
