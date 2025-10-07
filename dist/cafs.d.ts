@@ -13,20 +13,20 @@ export declare class CAFS {
      * @param metadata Optional metadata
      * @returns CAFS operation result
      */
-    storeContent(content: string, metadata?: Partial<ResourceMetadata>): Promise<CAFSOperationResult>;
+    storeContent(folder: string | undefined, content: string, metadata?: Partial<ResourceMetadata>): Promise<CAFSOperationResult>;
     /**
      * Retrieves content from CAFS by hash
      * @param contentHash The SHA-256 hash of the content
      * @param updateAccessTime Whether to update last accessed time
      * @returns The content string
      */
-    retrieveContent(contentHash: string, updateAccessTime?: boolean): Promise<string>;
+    retrieveContent(folder: string | undefined, contentHash: string, updateAccessTime?: boolean): Promise<string>;
     /**
      * Checks if content exists in CAFS
      * @param contentHash The SHA-256 hash to check
      * @returns True if content exists, false otherwise
      */
-    contentExists(contentHash: string): Promise<boolean>;
+    contentExists(folder: string | undefined, contentHash: string): Promise<boolean>;
     /**
      * Deletes content from CAFS (decrements reference count)
      * @param contentHash The SHA-256 hash of the content
@@ -44,7 +44,7 @@ export declare class CAFS {
      * @param filter Optional filter function
      * @returns Array of CAFS entries
      */
-    listCAFSEntries(filter?: (entry: CAFSEntry) => boolean): Promise<CAFSEntry[]>;
+    listCAFSEntries(folder?: string, filter?: (entry: CAFSEntry) => boolean): Promise<CAFSEntry[]>;
     /**
      * Generates SHA-256 hash of content
      * @param content The content to hash

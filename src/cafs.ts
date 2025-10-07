@@ -34,6 +34,7 @@ export class CAFS {
      * @returns CAFS operation result
      */
     async storeContent(
+        folder: string = 'cafs',
         content: string, 
         metadata: Partial<ResourceMetadata> = {}
     ): Promise<CAFSOperationResult> {
@@ -52,7 +53,7 @@ export class CAFS {
 
             // Generate content hash
             const contentHash = this.generateContentHash(content);
-            const storagePath = this.getStoragePath(contentHash);
+            const storagePath = this.getStoragePath(folder, contentHash);
 
             // Check if content already exists (deduplication)
             if (this.config.enableDeduplication) {
@@ -118,9 +119,9 @@ export class CAFS {
      * @param updateAccessTime Whether to update last accessed time
      * @returns The content string
      */
-    async retrieveContent(contentHash: string, updateAccessTime: boolean = true): Promise<string> {
+    async retrieveContent(folder: string = 'cafs', contentHash: string, updateAccessTime: boolean = true): Promise<string> {
         try {
-            const storagePath = this.getStoragePath(contentHash);
+            const storagePath = this.getStoragePath(folder, contentHash);
             
             // Check if content exists
             const exists = await this.gcsUtils.fileExists(storagePath);
@@ -150,6 +151,85 @@ export class CAFS {
     }
 
     /**
+     * Checks if content exists in CAFS
+     * @param contentHash The SHA-256 hash to check
+     * @returns True if content exists, false otherwise
+     */
+    async contentExists(folder: string = 'cafs', contentHash: string): Promise<boolean> {
+        const storagePath = this.getStoragePath(folder, contentHash);
+        return await this.gcsUtils.fileExists(storagePath);
+    }
+
+    /**
+     * Deletes content from CAFS (decrements reference count)
+     * @param contentHash The SHA-256 hash of the content
+     * @param forceDelete Whether to force delete regardless of reference count
+     */
+    async deleteContent(contentHash: string, forceDelete: boolean = false): Promise<void> {
+        try {
+            const cafsEntry = await this.getCAFSMetadata(contentHash);
+            if (!cafsEntry) {
+                throw new Error(`CAFS entry not found for hash ${contentHash}`);
+            }
+
+            if (!forceDelete) {
+                // Decrement reference count
+                const newRefCount = Math.max(0, cafsEntry.metadata.referenceCount - 1);
+                await this.updateReferenceCount(contentHash, -1);
+
+                // Only delete if reference count reaches zero
+                if (newRefCount > 0) {
+                    return;
+                }
+            }
+
+            // Delete from GCS
+            await this.gcsUtils.deleteFile(cafsEntry.gcsPath);
+
+            // Delete CAFS metadata
+            await this.deleteCAFSMetadata(contentHash);
+
+        } catch (error) {
+            throw new Error(`Failed to delete content: ${error}`);
+        }
+    }
+
+    /**
+     * Gets CAFS entry metadata
+     * @param contentHash The SHA-256 hash
+     * @returns CAFS entry or null if not found
+     */
+    async getCAFSEntry(contentHash: string): Promise<CAFSEntry | null> {
+        return await this.getCAFSMetadata(contentHash);
+    }
+
+    /**
+     * Lists all CAFS entries with optional filtering
+     * @param filter Optional filter function
+     * @returns Array of CAFS entries
+     */
+    async listCAFSEntries(folder: string = 'cafs', filter?: (entry: CAFSEntry) => boolean): Promise<CAFSEntry[]> {
+        // In a real implementation, this would query Firestore
+        // For now, we'll list files in the CAFS directory
+        const files = await this.gcsUtils.listFiles(`${folder}/`);
+        const entries: CAFSEntry[] = [];
+
+        for (const file of files) {
+            if (file.endsWith('.json')) continue; // Skip metadata files
+            
+            const hash = this.extractHashFromPath(file);
+            if (hash) {
+                const entry = await this.getCAFSMetadata(hash);
+                if (entry && (!filter || filter(entry))) {
+                    entries.push(entry);
+                }
+            }
+        }
+
+        return entries;
+    }
+
+    /**
      * Generates SHA-256 hash of content
      * @param content The content to hash
      * @returns The SHA-256 hash as hex string
@@ -163,10 +243,10 @@ export class CAFS {
      * @param contentHash The SHA-256 hash
      * @returns The GCS storage path
      */
-    private getStoragePath(contentHash: string): string {
+    private getStoragePath(folder: string, contentHash: string): string {
         // Use first 2 characters for directory structure to avoid too many files in one directory
         const prefix = contentHash.substring(0, 2);
-        return `cafs/${prefix}/${contentHash}`;
+        return `${folder}/${prefix}/${contentHash}`;
     }
 
     /**

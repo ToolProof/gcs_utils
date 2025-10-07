@@ -24,7 +24,7 @@ class CAFS {
      * @param metadata Optional metadata
      * @returns CAFS operation result
      */
-    async storeContent(content, metadata = {}) {
+    async storeContent(folder = 'cafs', content, metadata = {}) {
         try {
             // Validate content size
             const contentSize = Buffer.byteLength(content, 'utf8');
@@ -39,7 +39,7 @@ class CAFS {
             }
             // Generate content hash
             const contentHash = this.generateContentHash(content);
-            const storagePath = this.getStoragePath(contentHash);
+            const storagePath = this.getStoragePath(folder, contentHash);
             // Check if content already exists (deduplication)
             if (this.config.enableDeduplication) {
                 const exists = await this.gcsUtils.fileExists(storagePath);
@@ -98,9 +98,9 @@ class CAFS {
      * @param updateAccessTime Whether to update last accessed time
      * @returns The content string
      */
-    async retrieveContent(contentHash, updateAccessTime = true) {
+    async retrieveContent(folder = 'cafs', contentHash, updateAccessTime = true) {
         try {
-            const storagePath = this.getStoragePath(contentHash);
+            const storagePath = this.getStoragePath(folder, contentHash);
             // Check if content exists
             const exists = await this.gcsUtils.fileExists(storagePath);
             if (!exists) {
@@ -128,8 +128,8 @@ class CAFS {
      * @param contentHash The SHA-256 hash to check
      * @returns True if content exists, false otherwise
      */
-    async contentExists(contentHash) {
-        const storagePath = this.getStoragePath(contentHash);
+    async contentExists(folder = 'cafs', contentHash) {
+        const storagePath = this.getStoragePath(folder, contentHash);
         return await this.gcsUtils.fileExists(storagePath);
     }
     /**
@@ -174,10 +174,10 @@ class CAFS {
      * @param filter Optional filter function
      * @returns Array of CAFS entries
      */
-    async listCAFSEntries(filter) {
+    async listCAFSEntries(folder = 'cafs', filter) {
         // In a real implementation, this would query Firestore
         // For now, we'll list files in the CAFS directory
-        const files = await this.gcsUtils.listFiles('cafs/');
+        const files = await this.gcsUtils.listFiles(`${folder}/`);
         const entries = [];
         for (const file of files) {
             if (file.endsWith('.json'))
@@ -205,10 +205,10 @@ class CAFS {
      * @param contentHash The SHA-256 hash
      * @returns The GCS storage path
      */
-    getStoragePath(contentHash) {
+    getStoragePath(folder, contentHash) {
         // Use first 2 characters for directory structure to avoid too many files in one directory
         const prefix = contentHash.substring(0, 2);
-        return `cafs/${prefix}/${contentHash}`;
+        return `${folder}/${prefix}/${contentHash}`;
     }
     /**
      * Stores CAFS metadata (placeholder for Firestore integration)
