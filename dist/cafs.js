@@ -207,8 +207,7 @@ class CAFS {
      */
     getStoragePath(folder, contentHash) {
         // Use first 2 characters for directory structure to avoid too many files in one directory
-        const prefix = contentHash.substring(0, 2);
-        return `${folder}/${prefix}/${contentHash}`;
+        return `${folder}/${contentHash}`;
     }
     /**
      * Stores CAFS metadata (placeholder for Firestore integration)

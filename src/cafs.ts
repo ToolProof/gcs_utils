@@ -245,8 +245,7 @@ export class CAFS {
      */
     private getStoragePath(folder: string, contentHash: string): string {
         // Use first 2 characters for directory structure to avoid too many files in one directory
-        const prefix = contentHash.substring(0, 2);
-        return `${folder}/${prefix}/${contentHash}`;
+        return `${folder}/${contentHash}`;
     }
 
     /**
