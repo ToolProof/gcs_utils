@@ -1,11 +1,13 @@
 import { createHash } from 'crypto';
-import { GCSUtils } from './gcs-utils';
-import { 
-    CAFSEntry, 
-    CAFSOperationResult, 
-    ResourceMetadata, 
-    GCSUtilsConfig 
-} from './types';
+import { GCSUtils } from './gcs-utils.js';
+import {
+    CAFSEntry,
+    CAFSOperationResult,
+    ResourceMetadata,
+    GCSUtilsConfig
+} from './types/index.js';
+
+/* ATTENTION: So, getStoragePath produces flat paths, while extractHashFromPath only recognizes sharded paths. That’s inconsistent. */
 
 /**
  * Content Addressable File Storage (CAFS) implementation
@@ -23,7 +25,7 @@ export class CAFS {
             maxFileSize: config.maxFileSize || 10 * 1024 * 1024, // 10MB default
             defaultContentType: config.defaultContentType || 'application/json'
         };
-        
+
         this.gcsUtils = new GCSUtils(this.config.bucketName);
     }
 
@@ -35,7 +37,7 @@ export class CAFS {
      */
     async storeContent(
         folder: string = 'cafs',
-        content: string, 
+        content: string,
         metadata: Partial<ResourceMetadata> = {}
     ): Promise<CAFSOperationResult> {
         try {
@@ -52,7 +54,7 @@ export class CAFS {
             }
 
             // Generate content hash
-            const contentHash = this.generateContentHash(content);
+            const contentHash = this.gcsUtils.generateContentHash(content);
             const storagePath = this.getStoragePath(folder, contentHash);
 
             // Check if content already exists (deduplication)
@@ -122,7 +124,7 @@ export class CAFS {
     async retrieveContent(folder: string = 'cafs', contentHash: string, updateAccessTime: boolean = true): Promise<string> {
         try {
             const storagePath = this.getStoragePath(folder, contentHash);
-            
+
             // Check if content exists
             const exists = await this.gcsUtils.fileExists(storagePath);
             if (!exists) {
@@ -133,7 +135,7 @@ export class CAFS {
             const content = await this.gcsUtils.readRawContent(storagePath);
 
             // Verify content hash
-            const actualHash = this.generateContentHash(content);
+            const actualHash = this.gcsUtils.generateContentHash(content);
             if (actualHash !== contentHash) {
                 throw new Error(`Content hash mismatch. Expected: ${contentHash}, Actual: ${actualHash}`);
             }
@@ -216,7 +218,7 @@ export class CAFS {
 
         for (const file of files) {
             if (file.endsWith('.json')) continue; // Skip metadata files
-            
+
             const hash = this.extractHashFromPath(file);
             if (hash) {
                 const entry = await this.getCAFSMetadata(folder, hash);
@@ -227,15 +229,6 @@ export class CAFS {
         }
 
         return entries;
-    }
-
-    /**
-     * Generates SHA-256 hash of content
-     * @param content The content to hash
-     * @returns The SHA-256 hash as hex string
-     */
-    private generateContentHash(content: string): string {
-        return createHash('sha256').update(content).digest('hex');
     }
 
     /**
