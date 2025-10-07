@@ -32,13 +32,13 @@ export declare class CAFS {
      * @param contentHash The SHA-256 hash of the content
      * @param forceDelete Whether to force delete regardless of reference count
      */
-    deleteContent(contentHash: string, forceDelete?: boolean): Promise<void>;
+    deleteContent(folder: string | undefined, contentHash: string, forceDelete?: boolean): Promise<void>;
     /**
      * Gets CAFS entry metadata
      * @param contentHash The SHA-256 hash
      * @returns CAFS entry or null if not found
      */
-    getCAFSEntry(contentHash: string): Promise<CAFSEntry | null>;
+    getCAFSEntry(folder: string | undefined, contentHash: string): Promise<CAFSEntry | null>;
     /**
      * Lists all CAFS entries with optional filtering
      * @param filter Optional filter function

@@ -60,7 +60,7 @@ export class CAFS {
                 const exists = await this.gcsUtils.fileExists(storagePath);
                 if (exists) {
                     // Content already exists, just update reference count
-                    await this.updateReferenceCount(contentHash, 1);
+                    await this.updateReferenceCount(folder, contentHash, 1);
                     return {
                         success: true,
                         contentHash,
@@ -93,7 +93,7 @@ export class CAFS {
             };
 
             // Store CAFS metadata (in a real implementation, this would go to Firestore)
-            await this.storeCAFSMetadata(cafsEntry);
+            await this.storeCAFSMetadata(folder, cafsEntry);
 
             return {
                 success: true,
@@ -140,7 +140,7 @@ export class CAFS {
 
             // Update access time if requested
             if (updateAccessTime) {
-                await this.updateLastAccessTime(contentHash);
+                await this.updateLastAccessTime(folder, contentHash);
             }
 
             return content;
@@ -165,9 +165,9 @@ export class CAFS {
      * @param contentHash The SHA-256 hash of the content
      * @param forceDelete Whether to force delete regardless of reference count
      */
-    async deleteContent(contentHash: string, forceDelete: boolean = false): Promise<void> {
+    async deleteContent(folder: string = 'cafs', contentHash: string, forceDelete: boolean = false): Promise<void> {
         try {
-            const cafsEntry = await this.getCAFSMetadata(contentHash);
+            const cafsEntry = await this.getCAFSMetadata(folder, contentHash);
             if (!cafsEntry) {
                 throw new Error(`CAFS entry not found for hash ${contentHash}`);
             }
@@ -175,7 +175,7 @@ export class CAFS {
             if (!forceDelete) {
                 // Decrement reference count
                 const newRefCount = Math.max(0, cafsEntry.metadata.referenceCount - 1);
-                await this.updateReferenceCount(contentHash, -1);
+                await this.updateReferenceCount(folder, contentHash, -1);
 
                 // Only delete if reference count reaches zero
                 if (newRefCount > 0) {
@@ -187,7 +187,7 @@ export class CAFS {
             await this.gcsUtils.deleteFile(cafsEntry.gcsPath);
 
             // Delete CAFS metadata
-            await this.deleteCAFSMetadata(contentHash);
+            await this.deleteCAFSMetadata(folder, contentHash);
 
         } catch (error) {
             throw new Error(`Failed to delete content: ${error}`);
@@ -199,8 +199,8 @@ export class CAFS {
      * @param contentHash The SHA-256 hash
      * @returns CAFS entry or null if not found
      */
-    async getCAFSEntry(contentHash: string): Promise<CAFSEntry | null> {
-        return await this.getCAFSMetadata(contentHash);
+    async getCAFSEntry(folder: string = 'cafs', contentHash: string): Promise<CAFSEntry | null> {
+        return await this.getCAFSMetadata(folder, contentHash);
     }
 
     /**
@@ -219,7 +219,7 @@ export class CAFS {
             
             const hash = this.extractHashFromPath(file);
             if (hash) {
-                const entry = await this.getCAFSMetadata(hash);
+                const entry = await this.getCAFSMetadata(folder, hash);
                 if (entry && (!filter || filter(entry))) {
                     entries.push(entry);
                 }
@@ -252,10 +252,10 @@ export class CAFS {
      * Stores CAFS metadata (placeholder for Firestore integration)
      * @param entry The CAFS entry to store
      */
-    private async storeCAFSMetadata(entry: CAFSEntry): Promise<void> {
+    private async storeCAFSMetadata(folder: string = 'cafs', entry: CAFSEntry): Promise<void> {
         // In a real implementation, this would store in Firestore
         // For now, store as JSON file in GCS
-        const metadataPath = `cafs/metadata/${entry.contentHash}.json`;
+        const metadataPath = `${folder}/metadata/${entry.contentHash}.json`;
         const metadataContent = JSON.stringify(entry, null, 2);
         await this.gcsUtils.writeRawContent(metadataPath, metadataContent, 'application/json');
     }
@@ -265,9 +265,9 @@ export class CAFS {
      * @param contentHash The content hash
      * @returns CAFS entry or null
      */
-    private async getCAFSMetadata(contentHash: string): Promise<CAFSEntry | null> {
+    private async getCAFSMetadata(folder: string = 'cafs', contentHash: string): Promise<CAFSEntry | null> {
         try {
-            const metadataPath = `cafs/metadata/${contentHash}.json`;
+            const metadataPath = `${folder}/metadata/${contentHash}.json`;
             const metadataContent = await this.gcsUtils.readRawContent(metadataPath);
             return JSON.parse(metadataContent) as CAFSEntry;
         } catch (error) {
@@ -279,8 +279,8 @@ export class CAFS {
      * Deletes CAFS metadata
      * @param contentHash The content hash
      */
-    private async deleteCAFSMetadata(contentHash: string): Promise<void> {
-        const metadataPath = `cafs/metadata/${contentHash}.json`;
+    private async deleteCAFSMetadata(folder: string = 'cafs', contentHash: string): Promise<void> {
+        const metadataPath = `${folder}/metadata/${contentHash}.json`;
         await this.gcsUtils.deleteFile(metadataPath);
     }
 
@@ -289,11 +289,11 @@ export class CAFS {
      * @param contentHash The content hash
      * @param delta The change in reference count
      */
-    private async updateReferenceCount(contentHash: string, delta: number): Promise<void> {
-        const entry = await this.getCAFSMetadata(contentHash);
+    private async updateReferenceCount(folder: string = 'cafs', contentHash: string, delta: number): Promise<void> {
+        const entry = await this.getCAFSMetadata(folder, contentHash);
         if (entry) {
             entry.metadata.referenceCount = Math.max(0, entry.metadata.referenceCount + delta);
-            await this.storeCAFSMetadata(entry);
+            await this.storeCAFSMetadata(folder, entry);
         }
     }
 
@@ -301,11 +301,11 @@ export class CAFS {
      * Updates last access time for a CAFS entry
      * @param contentHash The content hash
      */
-    private async updateLastAccessTime(contentHash: string): Promise<void> {
-        const entry = await this.getCAFSMetadata(contentHash);
+    private async updateLastAccessTime(folder: string = 'cafs', contentHash: string): Promise<void> {
+        const entry = await this.getCAFSMetadata(folder, contentHash);
         if (entry) {
             entry.metadata.lastAccessedAt = new Date();
-            await this.storeCAFSMetadata(entry);
+            await this.storeCAFSMetadata(folder, entry);
         }
     }
 
