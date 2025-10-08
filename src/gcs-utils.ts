@@ -1,6 +1,7 @@
 import { Storage } from '@google-cloud/storage';
 import { createHash } from 'crypto';
 import { IntegerInstance, ReadOptions, WriteOptions } from './types/index.js';
+import { dbAdmin } from './firebaseAdminInit.js';
 
 /**
  * Core GCS utilities for reading and writing files
@@ -43,7 +44,7 @@ export class GCSUtils {
                 const contentHash = this.generateContentHash(fileContents.toString());
                 const [metadata] = await file.getMetadata();
                 const storedHash = metadata.metadata?.contentHash;
-                
+
                 if (storedHash && storedHash !== contentHash) {
                     throw new Error(`Content hash mismatch for file ${filePath}`);
                 }
@@ -62,8 +63,8 @@ export class GCSUtils {
      * @param options Optional write options
      */
     async writeToGCS(
-        filePath: string, 
-        semanticIdentity: number, 
+        filePath: string,
+        semanticIdentity: number,
         options: WriteOptions = {}
     ): Promise<void> {
         try {
@@ -101,6 +102,17 @@ export class GCSUtils {
         }
     }
 
+    async writeToFirestore(
+        docPath: string,
+        data: any
+    ): Promise<void> {
+        try {
+            await dbAdmin.doc(docPath).set(data);
+        } catch (error) {
+            throw new Error(`Failed to write to Firestore: ${error}`);
+        }
+    }
+
     /**
      * Reads raw content from GCS
      * @param filePath The path to the file in the GCS bucket
@@ -130,8 +142,8 @@ export class GCSUtils {
      * @param contentType The MIME type of the content
      */
     async writeRawContent(
-        filePath: string, 
-        content: string, 
+        filePath: string,
+        content: string,
         contentType: string = 'text/plain'
     ): Promise<void> {
         try {

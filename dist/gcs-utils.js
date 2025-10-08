@@ -1,5 +1,6 @@
 import { Storage } from '@google-cloud/storage';
 import { createHash } from 'crypto';
+import { dbAdmin } from './firebaseAdminInit.js';
 /**
  * Core GCS utilities for reading and writing files
  */
@@ -78,6 +79,14 @@ export class GCSUtils {
         }
         catch (error) {
             throw new Error(`Failed to write file ${filePath}: ${error}`);
+        }
+    }
+    async writeToFirestore(docPath, data) {
+        try {
+            await dbAdmin.doc(docPath).set(data);
+        }
+        catch (error) {
+            throw new Error(`Failed to write to Firestore: ${error}`);
         }
     }
     /**
