@@ -17,11 +17,12 @@ export class CAFS {
     }
     /**
      * Stores content in CAFS with deduplication
+     * @param folder The folder to store content in
      * @param content The content to store
      * @param metadata Optional metadata
      * @returns CAFS operation result
      */
-    async storeContent(folder = 'cafs', content, metadata = {}) {
+    async storeContent(folder, resourceId, content, metadata = {}) {
         try {
             // Validate content size
             const contentSize = Buffer.byteLength(content, 'utf8');
@@ -71,8 +72,11 @@ export class CAFS {
                 referencedBy: []
             };
             // Store CAFS metadata (in a real implementation, this would go to Firestore)
-            await this.storeCAFSMetadata(folder, cafsEntry);
-            await this.gcsUtils.writeToFirestore(contentHash, cafsEntry);
+            // await this.storeCAFSMetadata(folder, cafsEntry);
+            await this.gcsUtils.writeToFirestore(folder, resourceId, {
+                path: storagePath,
+                timestamp: new Date().toISOString() // ATTENTION
+            });
             return {
                 success: true,
                 contentHash,
@@ -96,7 +100,7 @@ export class CAFS {
      * @param updateAccessTime Whether to update last accessed time
      * @returns The content string
      */
-    async retrieveContent(folder = 'cafs', contentHash, updateAccessTime = true) {
+    async retrieveContent(folder, contentHash, updateAccessTime = true) {
         try {
             const storagePath = this.getStoragePath(folder, contentHash);
             // Check if content exists

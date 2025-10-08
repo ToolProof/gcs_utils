@@ -9,18 +9,19 @@ export declare class CAFS {
     constructor(config?: Partial<GCSUtilsConfig>);
     /**
      * Stores content in CAFS with deduplication
+     * @param folder The folder to store content in
      * @param content The content to store
      * @param metadata Optional metadata
      * @returns CAFS operation result
      */
-    storeContent(folder: string | undefined, content: string, metadata?: Partial<ResourceMetadata>): Promise<CAFSOperationResult>;
+    storeContent(folder: string, resourceId: string, content: string, metadata?: Partial<ResourceMetadata>): Promise<CAFSOperationResult>;
     /**
      * Retrieves content from CAFS by hash
      * @param contentHash The SHA-256 hash of the content
      * @param updateAccessTime Whether to update last accessed time
      * @returns The content string
      */
-    retrieveContent(folder: string | undefined, contentHash: string, updateAccessTime?: boolean): Promise<string>;
+    retrieveContent(folder: string, contentHash: string, updateAccessTime?: boolean): Promise<string>;
     /**
      * Checks if content exists in CAFS
      * @param contentHash The SHA-256 hash to check
