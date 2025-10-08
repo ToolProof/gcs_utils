@@ -1,4 +1,3 @@
-import { createHash } from 'crypto';
 import { GCSUtils } from './gcs-utils.js';
 import {
     CAFSEntry,
@@ -7,7 +6,7 @@ import {
     GCSUtilsConfig
 } from './types/index.js';
 
-/* ATTENTION: So, getStoragePath produces flat paths, while extractHashFromPath only recognizes sharded paths. That’s inconsistent. */
+/* ATTENTION: getStoragePath produces flat paths, while extractHashFromPath only recognizes sharded paths. That’s inconsistent. */
 
 /**
  * Content Addressable File Storage (CAFS) implementation
