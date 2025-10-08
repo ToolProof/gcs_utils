@@ -1,6 +1,6 @@
 import { Storage } from '@google-cloud/storage';
 import { createHash } from 'crypto';
-import { IntegerInstance, ReadOptions, WriteOptions } from './types';
+import { IntegerInstance, ReadOptions, WriteOptions } from './types/index.js';
 
 /**
  * Core GCS utilities for reading and writing files

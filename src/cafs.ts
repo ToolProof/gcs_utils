@@ -1,11 +1,11 @@
 import { createHash } from 'crypto';
-import { GCSUtils } from './gcs-utils';
+import { GCSUtils } from './gcs-utils.js';
 import { 
     CAFSEntry, 
     CAFSOperationResult, 
     ResourceMetadata, 
     GCSUtilsConfig 
-} from './types';
+} from './types/index.js';
 
 /**
  * Content Addressable File Storage (CAFS) implementation
