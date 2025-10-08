@@ -1,4 +1,4 @@
-import { CAFSEntry, CAFSOperationResult, ResourceMetadata, GCSUtilsConfig } from './types';
+import { CAFSEntry, CAFSOperationResult, ResourceMetadata, GCSUtilsConfig } from './types/index.js';
 /**
  * Content Addressable File Storage (CAFS) implementation
  * Provides deduplication and content-based addressing for resources

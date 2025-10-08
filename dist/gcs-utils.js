@@ -1,14 +1,11 @@
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.GCSUtils = void 0;
-const storage_1 = require("@google-cloud/storage");
-const crypto_1 = require("crypto");
+import { Storage } from '@google-cloud/storage';
+import { createHash } from 'crypto';
 /**
  * Core GCS utilities for reading and writing files
  */
-class GCSUtils {
+export class GCSUtils {
     constructor(bucketName) {
-        this.storage = new storage_1.Storage();
+        this.storage = new Storage();
         this.bucketName = bucketName || process.env.BUCKET_NAME || 'tp-resources';
     }
     /**
@@ -134,7 +131,7 @@ class GCSUtils {
      * @returns The SHA-256 hash as hex string
      */
     generateContentHash(content) {
-        return (0, crypto_1.createHash)('sha256').update(content).digest('hex');
+        return createHash('sha256').update(content).digest('hex');
     }
     /**
      * Checks if a file exists in GCS
@@ -198,4 +195,3 @@ class GCSUtils {
         }
     }
 }
-exports.GCSUtils = GCSUtils;

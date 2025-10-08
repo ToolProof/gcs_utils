@@ -1,4 +1,4 @@
-import { ReadOptions, WriteOptions } from './types';
+import { ReadOptions, WriteOptions } from './types/index.js';
 /**
  * Core GCS utilities for reading and writing files
  */
