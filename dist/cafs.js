@@ -1,13 +1,10 @@
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.CAFS = void 0;
-const crypto_1 = require("crypto");
-const gcs_utils_1 = require("./gcs-utils");
+import { GCSUtils } from './gcs-utils.js';
+/* ATTENTION: getStoragePath produces flat paths, while extractHashFromPath only recognizes sharded paths. That’s inconsistent. */
 /**
  * Content Addressable File Storage (CAFS) implementation
  * Provides deduplication and content-based addressing for resources
  */
-class CAFS {
+export class CAFS {
     constructor(config = {}) {
         this.config = {
             bucketName: config.bucketName || process.env.BUCKET_NAME || 'tp-resources',
@@ -16,7 +13,7 @@ class CAFS {
             maxFileSize: config.maxFileSize || 10 * 1024 * 1024, // 10MB default
             defaultContentType: config.defaultContentType || 'application/json'
         };
-        this.gcsUtils = new gcs_utils_1.GCSUtils(this.config.bucketName);
+        this.gcsUtils = new GCSUtils(this.config.bucketName);
     }
     /**
      * Stores content in CAFS with deduplication
@@ -38,7 +35,7 @@ class CAFS {
                 };
             }
             // Generate content hash
-            const contentHash = this.generateContentHash(content);
+            const contentHash = this.gcsUtils.generateContentHash(content);
             const storagePath = this.getStoragePath(folder, contentHash);
             // Check if content already exists (deduplication)
             if (this.config.enableDeduplication) {
@@ -109,7 +106,7 @@ class CAFS {
             // Retrieve content
             const content = await this.gcsUtils.readRawContent(storagePath);
             // Verify content hash
-            const actualHash = this.generateContentHash(content);
+            const actualHash = this.gcsUtils.generateContentHash(content);
             if (actualHash !== contentHash) {
                 throw new Error(`Content hash mismatch. Expected: ${contentHash}, Actual: ${actualHash}`);
             }
@@ -193,14 +190,6 @@ class CAFS {
         return entries;
     }
     /**
-     * Generates SHA-256 hash of content
-     * @param content The content to hash
-     * @returns The SHA-256 hash as hex string
-     */
-    generateContentHash(content) {
-        return (0, crypto_1.createHash)('sha256').update(content).digest('hex');
-    }
-    /**
      * Gets the storage path for a content hash
      * @param contentHash The SHA-256 hash
      * @returns The GCS storage path
@@ -276,4 +265,3 @@ class CAFS {
         return match ? match[1] : null;
     }
 }
-exports.CAFS = CAFS;

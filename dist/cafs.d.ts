@@ -1,4 +1,4 @@
-import { CAFSEntry, CAFSOperationResult, ResourceMetadata, GCSUtilsConfig } from './types';
+import { CAFSEntry, CAFSOperationResult, ResourceMetadata, GCSUtilsConfig } from './types/index.js';
 /**
  * Content Addressable File Storage (CAFS) implementation
  * Provides deduplication and content-based addressing for resources
@@ -45,12 +45,6 @@ export declare class CAFS {
      * @returns Array of CAFS entries
      */
     listCAFSEntries(folder?: string, filter?: (entry: CAFSEntry) => boolean): Promise<CAFSEntry[]>;
-    /**
-     * Generates SHA-256 hash of content
-     * @param content The content to hash
-     * @returns The SHA-256 hash as hex string
-     */
-    private generateContentHash;
     /**
      * Gets the storage path for a content hash
      * @param contentHash The SHA-256 hash
