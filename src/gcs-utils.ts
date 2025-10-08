@@ -11,8 +11,11 @@ export class GCSUtils {
     private bucketName: string;
 
     constructor(bucketName?: string) {
+        if (!process.env.BUCKET_NAME) {
+            throw new Error('BUCKET_NAME environment variable is not set');
+        }
         this.storage = new Storage();
-        this.bucketName = bucketName || process.env.BUCKET_NAME || 'tp-resources';
+        this.bucketName = bucketName || process.env.BUCKET_NAME;
     }
 
     /**
@@ -103,13 +106,14 @@ export class GCSUtils {
     }
 
     async writeToFirestore(
-        contentHash: string,
-        data: any
+        folder: string,
+        resourceId: string,
+        content: { path: string; timestamp: string }
     ): Promise<void> {
         try {
-            const col = dbAdmin.collection('cafs').doc('integers').collection('members');
-            const docRef = col.doc(contentHash);
-            await docRef.set(data);
+            const col = dbAdmin.collection('resources').doc(folder).collection('members');
+            const docRef = col.doc(resourceId);
+            await docRef.set(content);
         } catch (error) {
             throw new Error(`Failed to write to Firestore: ${error}`);
         }
