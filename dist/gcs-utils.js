@@ -81,9 +81,11 @@ export class GCSUtils {
             throw new Error(`Failed to write file ${filePath}: ${error}`);
         }
     }
-    async writeToFirestore(docPath, data) {
+    async writeToFirestore(contentHash, data) {
         try {
-            await dbAdmin.doc(docPath).set(data);
+            const col = dbAdmin.collection('cafs').doc('integers').collection('members');
+            const docRef = col.doc(contentHash);
+            await docRef.set(data);
         }
         catch (error) {
             throw new Error(`Failed to write to Firestore: ${error}`);

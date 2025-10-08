@@ -103,11 +103,13 @@ export class GCSUtils {
     }
 
     async writeToFirestore(
-        docPath: string,
+        contentHash: string,
         data: any
     ): Promise<void> {
         try {
-            await dbAdmin.doc(docPath).set(data);
+            const col = dbAdmin.collection('cafs').doc('integers').collection('members');
+            const docRef = col.doc(contentHash);
+            await docRef.set(data);
         } catch (error) {
             throw new Error(`Failed to write to Firestore: ${error}`);
         }

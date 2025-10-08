@@ -20,7 +20,7 @@ export declare class GCSUtils {
      * @param options Optional write options
      */
     writeToGCS(filePath: string, semanticIdentity: number, options?: WriteOptions): Promise<void>;
-    writeToFirestore(docPath: string, data: any): Promise<void>;
+    writeToFirestore(contentHash: string, data: any): Promise<void>;
     /**
      * Reads raw content from GCS
      * @param filePath The path to the file in the GCS bucket

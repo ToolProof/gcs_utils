@@ -72,7 +72,7 @@ export class CAFS {
             };
             // Store CAFS metadata (in a real implementation, this would go to Firestore)
             await this.storeCAFSMetadata(folder, cafsEntry);
-            await this.gcsUtils.writeToFirestore(`cafs/${contentHash}`, cafsEntry);
+            await this.gcsUtils.writeToFirestore(contentHash, cafsEntry);
             return {
                 success: true,
                 contentHash,
