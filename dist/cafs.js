@@ -102,7 +102,7 @@ export class CAFS {
      */
     async retrieveContent(folder, contentHash, updateAccessTime = true) {
         try {
-            const storagePath = contentHash; // this.getStoragePath(folder, contentHash); // ATTENTION 
+            const storagePath = contentHash; // this.getStoragePath(folder, contentHash); // ATTENTION: commenting out this for now to avoid adding folder prefix twice 
             // Check if content exists
             const exists = await this.gcsUtils.fileExists(storagePath);
             if (!exists) {
@@ -113,7 +113,7 @@ export class CAFS {
             // Verify content hash
             const actualHash = this.generateContentHash(content);
             if (actualHash !== contentHash) {
-                // throw new Error(`Content hash mismatch. Expected: ${contentHash}, Actual: ${actualHash}`); // ATTENTION
+                // throw new Error(`Content hash mismatch. Expected: ${contentHash}, Actual: ${actualHash}`); // ATTENTION: must comment this out for now as we are using full GCS path as contentHash
             }
             // Update access time if requested
             if (updateAccessTime) {
