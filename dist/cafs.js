@@ -102,7 +102,7 @@ export class CAFS {
      */
     async retrieveContent(folder, contentHash, updateAccessTime = true) {
         try {
-            const storagePath = contentHash; // this.getStoragePath(folder, contentHash); // ATTENTION
+            const storagePath = this.getStoragePath(folder, contentHash);
             // Check if content exists
             const exists = await this.gcsUtils.fileExists(storagePath);
             if (!exists) {
