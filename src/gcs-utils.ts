@@ -11,7 +11,7 @@ export class GCSUtils {
     private bucketName: string;
 
     constructor(bucketName?: string) {
-        if (!process.env.BUCKET_NAME) {
+        if (!bucketName || !process.env.BUCKET_NAME) {
             throw new Error('BUCKET_NAME environment variable is not set');
         }
         this.storage = new Storage();
