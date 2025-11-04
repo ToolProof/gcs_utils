@@ -6,7 +6,7 @@ import { dbAdmin } from './firebaseAdminInit.js';
  */
 export class GCSUtils {
     constructor(bucketName) {
-        if (!process.env.BUCKET_NAME) {
+        if (!bucketName || !process.env.BUCKET_NAME) {
             throw new Error('BUCKET_NAME environment variable is not set');
         }
         this.storage = new Storage();
@@ -120,7 +120,7 @@ export class GCSUtils {
      * @param content The content to store
      * @param contentType The MIME type of the content
      */
-    async writeRawContent(filePath, content, contentType = 'text/plain') {
+    async writeRawContent(filePath, content, contentType = 'text/plain', timestamp) {
         try {
             const bucket = this.storage.bucket(this.bucketName);
             const file = bucket.file(filePath);
@@ -130,7 +130,7 @@ export class GCSUtils {
                     contentType,
                     metadata: {
                         contentHash,
-                        createdAt: new Date().toISOString()
+                        timestamp
                     }
                 }
             });

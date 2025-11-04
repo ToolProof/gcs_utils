@@ -56,14 +56,14 @@ export class CAFS {
             const fullMetadata = {
                 contentSize,
                 contentType: metadata.contentType || this.config.defaultContentType,
-                createdAt: new Date(),
+                timestamp: new Date().toISOString(),
                 lastAccessedAt: new Date(),
                 referenceCount: 1,
                 tags: metadata.tags || [],
                 customProperties: metadata.customProperties || {}
             };
             // Store content in GCS
-            await this.gcsUtils.writeRawContent(storagePath, content, fullMetadata.contentType);
+            await this.gcsUtils.writeRawContent(storagePath, content, fullMetadata.contentType, fullMetadata.timestamp);
             // Create CAFS entry
             const cafsEntry = {
                 contentHash,
@@ -71,11 +71,9 @@ export class CAFS {
                 metadata: fullMetadata,
                 referencedBy: []
             };
-            // Store CAFS metadata (in a real implementation, this would go to Firestore)
-            // await this.storeCAFSMetadata(folder, cafsEntry);
             await this.gcsUtils.writeToFirestore(folder, resourceId, {
                 path: storagePath,
-                timestamp: new Date().toISOString() // ATTENTION
+                timestamp: fullMetadata.timestamp
             });
             return {
                 success: true,
@@ -215,12 +213,12 @@ export class CAFS {
      * Stores CAFS metadata (placeholder for Firestore integration)
      * @param entry The CAFS entry to store
      */
-    async storeCAFSMetadata(folder = 'cafs', entry) {
+    async storeCAFSMetadata(folder = 'cafs', entry, timestamp) {
         // In a real implementation, this would store in Firestore
         // For now, store as JSON file in GCS
         const metadataPath = `${folder}/metadata/${entry.contentHash}.json`;
         const metadataContent = JSON.stringify(entry, null, 2);
-        await this.gcsUtils.writeRawContent(metadataPath, metadataContent, 'application/json');
+        await this.gcsUtils.writeRawContent(metadataPath, metadataContent, 'application/json', timestamp);
     }
     /**
      * Retrieves CAFS metadata (placeholder for Firestore integration)
@@ -254,7 +252,7 @@ export class CAFS {
         const entry = await this.getCAFSMetadata(folder, contentHash);
         if (entry) {
             entry.metadata.referenceCount = Math.max(0, entry.metadata.referenceCount + delta);
-            await this.storeCAFSMetadata(folder, entry);
+            await this.storeCAFSMetadata(folder, entry, entry.metadata.timestamp);
         }
     }
     /**
@@ -265,7 +263,7 @@ export class CAFS {
         const entry = await this.getCAFSMetadata(folder, contentHash);
         if (entry) {
             entry.metadata.lastAccessedAt = new Date();
-            await this.storeCAFSMetadata(folder, entry);
+            await this.storeCAFSMetadata(folder, entry, entry.metadata.timestamp);
         }
     }
     /**

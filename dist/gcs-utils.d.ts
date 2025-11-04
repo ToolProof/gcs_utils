@@ -36,7 +36,7 @@ export declare class GCSUtils {
      * @param content The content to store
      * @param contentType The MIME type of the content
      */
-    writeRawContent(filePath: string, content: string, contentType?: string): Promise<void>;
+    writeRawContent(filePath: string, content: string, contentType: string | undefined, timestamp: string): Promise<void>;
     /**
      * Generates SHA-256 hash of content
      * @param content The content to hash

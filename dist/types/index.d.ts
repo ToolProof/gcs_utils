@@ -59,7 +59,7 @@ export interface ResourceMetadata {
     /** MIME type of the content */
     contentType: string;
     /** When the resource was first created */
-    createdAt: Date;
+    timestamp: string;
     /** When the resource was last accessed */
     lastAccessedAt: Date;
     /** Number of times this resource has been referenced */

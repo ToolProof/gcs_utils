@@ -2,6 +2,7 @@ import { Storage } from '@google-cloud/storage';
 import { createHash } from 'crypto';
 import { IntegerInstance, ReadOptions, WriteOptions } from './types/index.js';
 import { dbAdmin } from './firebaseAdminInit.js';
+import { time } from 'console';
 
 /**
  * Core GCS utilities for reading and writing files
@@ -150,7 +151,8 @@ export class GCSUtils {
     async writeRawContent(
         filePath: string,
         content: string,
-        contentType: string = 'text/plain'
+        contentType: string = 'text/plain',
+        timestamp: string
     ): Promise<void> {
         try {
             const bucket = this.storage.bucket(this.bucketName);
@@ -162,7 +164,7 @@ export class GCSUtils {
                     contentType,
                     metadata: {
                         contentHash,
-                        createdAt: new Date().toISOString()
+                        timestamp
                     }
                 }
             });

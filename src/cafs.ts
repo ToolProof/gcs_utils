@@ -76,7 +76,7 @@ export class CAFS {
             const fullMetadata: ResourceMetadata = {
                 contentSize,
                 contentType: metadata.contentType || this.config.defaultContentType,
-                createdAt: new Date(),
+                timestamp: new Date().toISOString(),
                 lastAccessedAt: new Date(),
                 referenceCount: 1,
                 tags: metadata.tags || [],
@@ -84,7 +84,7 @@ export class CAFS {
             };
 
             // Store content in GCS
-            await this.gcsUtils.writeRawContent(storagePath, content, fullMetadata.contentType);
+            await this.gcsUtils.writeRawContent(storagePath, content, fullMetadata.contentType, fullMetadata.timestamp);
 
             // Create CAFS entry
             const cafsEntry: CAFSEntry = {
@@ -94,12 +94,9 @@ export class CAFS {
                 referencedBy: []
             };
 
-            // Store CAFS metadata (in a real implementation, this would go to Firestore)
-            // await this.storeCAFSMetadata(folder, cafsEntry);
-
             await this.gcsUtils.writeToFirestore(folder, resourceId, {
                 path: storagePath,
-                timestamp: new Date().toISOString() // ATTENTION
+                timestamp: fullMetadata.timestamp
             });
 
             return {
@@ -259,12 +256,12 @@ export class CAFS {
      * Stores CAFS metadata (placeholder for Firestore integration)
      * @param entry The CAFS entry to store
      */
-    private async storeCAFSMetadata(folder: string = 'cafs', entry: CAFSEntry): Promise<void> {
+    private async storeCAFSMetadata(folder: string = 'cafs', entry: CAFSEntry, timestamp: string): Promise<void> {
         // In a real implementation, this would store in Firestore
         // For now, store as JSON file in GCS
         const metadataPath = `${folder}/metadata/${entry.contentHash}.json`;
         const metadataContent = JSON.stringify(entry, null, 2);
-        await this.gcsUtils.writeRawContent(metadataPath, metadataContent, 'application/json');
+        await this.gcsUtils.writeRawContent(metadataPath, metadataContent, 'application/json', timestamp);
     }
 
     /**
@@ -300,7 +297,7 @@ export class CAFS {
         const entry = await this.getCAFSMetadata(folder, contentHash);
         if (entry) {
             entry.metadata.referenceCount = Math.max(0, entry.metadata.referenceCount + delta);
-            await this.storeCAFSMetadata(folder, entry);
+            await this.storeCAFSMetadata(folder, entry, entry.metadata.timestamp);
         }
     }
 
@@ -312,7 +309,7 @@ export class CAFS {
         const entry = await this.getCAFSMetadata(folder, contentHash);
         if (entry) {
             entry.metadata.lastAccessedAt = new Date();
-            await this.storeCAFSMetadata(folder, entry);
+            await this.storeCAFSMetadata(folder, entry, entry.metadata.timestamp);
         }
     }
 
