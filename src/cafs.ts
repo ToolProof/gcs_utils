@@ -41,12 +41,12 @@ export class CAFS {
             roleId: string;
             executionId: string;
         },
-        content: string
+        data: string
     ): Promise<CAFSOperationResult> {
         console.log('CAFS.storeContent called with properties:', JSON.stringify(meta, null, 2));
         const folder = meta.typeId;
         const resourceId = meta.id;
-        // const content = data;
+        const content = JSON.stringify(data);
         const metadata = {} as any;
         try {
             // Validate content size

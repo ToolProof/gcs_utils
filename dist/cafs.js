@@ -22,11 +22,11 @@ export class CAFS {
      * @param metadata Optional metadata
      * @returns CAFS operation result
      */
-    async storeContent(meta, content) {
+    async storeContent(meta, data) {
         console.log('CAFS.storeContent called with properties:', JSON.stringify(meta, null, 2));
         const folder = meta.typeId;
         const resourceId = meta.id;
-        // const content = data;
+        const content = JSON.stringify(data);
         const metadata = {};
         try {
             // Validate content size

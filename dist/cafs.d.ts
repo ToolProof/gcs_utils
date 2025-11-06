@@ -19,7 +19,7 @@ export declare class CAFS {
         typeId: string;
         roleId: string;
         executionId: string;
-    }, content: string): Promise<CAFSOperationResult>;
+    }, data: string): Promise<CAFSOperationResult>;
     /**
      * Retrieves content from CAFS by hash
      * @param contentHash The SHA-256 hash of the content
