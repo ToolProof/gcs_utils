@@ -45,7 +45,6 @@ export declare class GCSUtils {
         typeId: string;
         roleId: string;
         executionId: string;
-        contentHash: string;
         kind: string;
         path: string;
         timestamp: string;

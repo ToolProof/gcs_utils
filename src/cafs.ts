@@ -73,7 +73,6 @@ export class CAFS {
                 await this.gcsUtils.writeRawContent(content,
                     {
                         ...meta,
-                        contentHash,
                         kind: 'realized',
                         path: storagePath,
                         timestamp
@@ -261,7 +260,6 @@ export class CAFS {
                 typeId: 'cafs',
                 roleId: 'metadata',
                 executionId: 'system',
-                contentHash: entry.contentHash,
                 kind: 'metadata',
                 path: metadataPath,
                 timestamp
