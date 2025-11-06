@@ -14,13 +14,12 @@ export declare class CAFS {
      * @param metadata Optional metadata
      * @returns CAFS operation result
      */
-    storeContent(properties: {
+    storeContent(meta: {
         id: string;
         typeId: string;
         roleId: string;
         executionId: string;
-        exposedData: string;
-    }): Promise<CAFSOperationResult>;
+    }, data: string): Promise<CAFSOperationResult>;
     /**
      * Retrieves content from CAFS by hash
      * @param contentHash The SHA-256 hash of the content
