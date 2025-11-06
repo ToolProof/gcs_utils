@@ -35,11 +35,19 @@ export class CAFS {
      * @returns CAFS operation result
      */
     async storeContent(
-        folder: string,
-        resourceId: string,
-        content: string,
-        metadata: Partial<ResourceMetadata> = {}
+        properties: {
+            id: string;
+            typeId: string;
+            roleId: string;
+            executionId: string;
+            exposedData: string;
+        }
     ): Promise<CAFSOperationResult> {
+        console.log('CAFS.storeContent called with properties:', JSON.stringify(properties, null, 2));
+        const folder = '';
+        const resourceId = '';
+        const content = '';
+        const metadata = {} as any;
         try {
             // Validate content size
             const contentSize = Buffer.byteLength(content, 'utf8');

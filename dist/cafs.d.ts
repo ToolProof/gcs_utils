@@ -1,4 +1,4 @@
-import { CAFSEntry, CAFSOperationResult, ResourceMetadata, GCSUtilsConfig } from './types/index.js';
+import { CAFSEntry, CAFSOperationResult, GCSUtilsConfig } from './types/index.js';
 /**
  * Content Addressable File Storage (CAFS) implementation
  * Provides deduplication and content-based addressing for resources
@@ -14,7 +14,13 @@ export declare class CAFS {
      * @param metadata Optional metadata
      * @returns CAFS operation result
      */
-    storeContent(folder: string, resourceId: string, content: string, metadata?: Partial<ResourceMetadata>): Promise<CAFSOperationResult>;
+    storeContent(properties: {
+        id: string;
+        typeId: string;
+        roleId: string;
+        executionId: string;
+        exposedData: string;
+    }): Promise<CAFSOperationResult>;
     /**
      * Retrieves content from CAFS by hash
      * @param contentHash The SHA-256 hash of the content
