@@ -41,13 +41,8 @@ export class CAFS {
             roleId: string;
             executionId: string;
         },
-        data: string
+        content: string
     ): Promise<CAFSOperationResult> {
-        console.log('CAFS.storeContent called with properties:', JSON.stringify(meta, null, 2));
-        const folder = meta.typeId;
-        const resourceId = meta.id;
-        const content = data;
-        const metadata = {} as any;
         try {
             // Validate content size
             const contentSize = Buffer.byteLength(content, 'utf8');
@@ -63,49 +58,38 @@ export class CAFS {
 
             // Generate content hash
             const contentHash = this.generateContentHash(content);
-            const storagePath = this.getStoragePath(folder, contentHash);
+            const storagePath = this.getStoragePath(meta.typeId, contentHash);
 
-            // Check if content already exists (deduplication)
-            if (this.config.enableDeduplication) {
-                const exists = await this.gcsUtils.fileExists(storagePath);
-                if (exists) {
-                    // Content already exists, just update reference count
-                    await this.updateReferenceCount(folder, contentHash, 1);
-                    return {
-                        success: true,
+            const timestamp = new Date().toISOString();
+
+            const fileExists = await this.gcsUtils.fileExists(storagePath);
+
+            let pointer = '';
+
+            if (!fileExists.fileExists) {
+                pointer = fileExists.id;
+
+                // Store content in GCS
+                await this.gcsUtils.writeRawContent(content,
+                    {
+                        ...meta,
                         contentHash,
-                        deduplicated: true,
-                        storagePath
-                    };
-                }
+                        kind: 'realized',
+                        path: storagePath,
+                        timestamp
+                    }
+                );
+            } else {
+                pointer = meta.id;
             }
 
-            // Store new content
-            const fullMetadata: ResourceMetadata = {
-                contentSize,
-                contentType: metadata.contentType || this.config.defaultContentType,
-                timestamp: new Date().toISOString(),
-                lastAccessedAt: new Date(),
-                referenceCount: 1,
-                tags: metadata.tags || [],
-                customProperties: metadata.customProperties || {}
-            };
-
-            // Store content in GCS
-            await this.gcsUtils.writeRawContent(storagePath, content, fullMetadata.contentType, fullMetadata.timestamp);
-
-            // Create CAFS entry
-            const cafsEntry: CAFSEntry = {
-                contentHash,
-                gcsPath: storagePath,
-                metadata: fullMetadata,
-                referencedBy: []
-            };
-
-            await this.gcsUtils.writeToFirestore(folder, resourceId, {
-                path: storagePath,
-                timestamp: fullMetadata.timestamp
-            });
+            await this.gcsUtils.writeToFirestore(
+                {
+                    ...meta,
+                    timestamp,
+                    pointer
+                }
+            );
 
             return {
                 success: true,
@@ -136,7 +120,7 @@ export class CAFS {
             const storagePath = contentHash; // this.getStoragePath(folder, contentHash); // ATTENTION: commenting out this for now to avoid adding folder prefix twice 
 
             // Check if content exists
-            const exists = await this.gcsUtils.fileExists(storagePath);
+            const { fileExists: exists } = await this.gcsUtils.fileExists(storagePath);
             if (!exists) {
                 throw new Error(`Content with hash ${contentHash} not found`);
             }
@@ -169,7 +153,8 @@ export class CAFS {
      */
     async contentExists(folder: string = 'cafs', contentHash: string): Promise<boolean> {
         const storagePath = this.getStoragePath(folder, contentHash);
-        return await this.gcsUtils.fileExists(storagePath);
+        const { fileExists } = await this.gcsUtils.fileExists(storagePath);
+        return fileExists;
     }
 
     /**
@@ -269,7 +254,19 @@ export class CAFS {
         // For now, store as JSON file in GCS
         const metadataPath = `${folder}/metadata/${entry.contentHash}.json`;
         const metadataContent = JSON.stringify(entry, null, 2);
-        await this.gcsUtils.writeRawContent(metadataPath, metadataContent, 'application/json', timestamp);
+        await this.gcsUtils.writeRawContent(
+            metadataContent,
+            {
+                id: entry.contentHash,
+                typeId: 'cafs',
+                roleId: 'metadata',
+                executionId: 'system',
+                contentHash: entry.contentHash,
+                kind: 'metadata',
+                path: metadataPath,
+                timestamp
+            }
+        );
     }
 
     /**

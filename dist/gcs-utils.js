@@ -84,11 +84,11 @@ export class GCSUtils {
             throw new Error(`Failed to write file ${filePath}: ${error}`);
         }
     }
-    async writeToFirestore(folder, resourceId, content) {
+    async writeToFirestore(meta) {
         try {
-            const col = dbAdmin.collection('resources').doc(folder).collection('members');
-            const docRef = col.doc(resourceId);
-            await docRef.set(content);
+            const col = dbAdmin.collection('resources').doc(meta.typeId).collection('members');
+            const docRef = col.doc(meta.id);
+            await docRef.set(meta);
         }
         catch (error) {
             throw new Error(`Failed to write to Firestore: ${error}`);
@@ -120,23 +120,47 @@ export class GCSUtils {
      * @param content The content to store
      * @param contentType The MIME type of the content
      */
-    async writeRawContent(filePath, content, contentType = 'text/plain', timestamp) {
+    async writeRawContent(content, meta) {
         try {
             const bucket = this.storage.bucket(this.bucketName);
-            const file = bucket.file(filePath);
-            const contentHash = this.generateContentHash(content);
+            const file = bucket.file(meta.path);
             await file.save(content, {
                 metadata: {
-                    contentType,
-                    metadata: {
-                        contentHash,
-                        timestamp
-                    }
+                    contentType: 'text/plain',
+                    metadata: meta
                 }
             });
         }
         catch (error) {
-            throw new Error(`Failed to write raw content to ${filePath}: ${error}`);
+            throw new Error(`Failed to write raw content to ${meta.path}: ${error}`);
+        }
+    }
+    /**
+   * Checks if a file exists in GCS and returns its metadata id if available
+   * @param filePath The path to check
+   * @returns Object with existence flag and id (empty string if not found)
+   */
+    async fileExists(filePath) {
+        try {
+            const bucket = this.storage.bucket(this.bucketName);
+            const file = bucket.file(filePath);
+            const [exists] = await file.exists();
+            if (!exists) {
+                return { fileExists: false, id: '' };
+            }
+            // Try to fetch metadata to extract custom metadata.id; return empty id on failure
+            try {
+                const [metadata] = await file.getMetadata();
+                const idRaw = metadata?.metadata?.id;
+                const id = typeof idRaw === 'string' ? idRaw : (idRaw != null ? String(idRaw) : '');
+                return { fileExists: true, id };
+            }
+            catch {
+                return { fileExists: true, id: '' };
+            }
+        }
+        catch (error) {
+            return { fileExists: false, id: '' };
         }
     }
     /**
@@ -146,22 +170,6 @@ export class GCSUtils {
      */
     generateContentHash(content) {
         return createHash('sha256').update(content).digest('hex');
-    }
-    /**
-     * Checks if a file exists in GCS
-     * @param filePath The path to check
-     * @returns True if file exists, false otherwise
-     */
-    async fileExists(filePath) {
-        try {
-            const bucket = this.storage.bucket(this.bucketName);
-            const file = bucket.file(filePath);
-            const [exists] = await file.exists();
-            return exists;
-        }
-        catch (error) {
-            return false;
-        }
     }
     /**
      * Deletes a file from GCS

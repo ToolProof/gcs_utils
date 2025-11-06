@@ -20,9 +20,13 @@ export declare class GCSUtils {
      * @param options Optional write options
      */
     writeToGCS(filePath: string, semanticIdentity: number, options?: WriteOptions): Promise<void>;
-    writeToFirestore(folder: string, resourceId: string, content: {
-        path: string;
+    writeToFirestore(meta: {
+        id: string;
+        typeId: string;
+        roleId: string;
+        executionId: string;
         timestamp: string;
+        pointer: string;
     }): Promise<void>;
     /**
      * Reads raw content from GCS
@@ -36,19 +40,31 @@ export declare class GCSUtils {
      * @param content The content to store
      * @param contentType The MIME type of the content
      */
-    writeRawContent(filePath: string, content: string, contentType: string | undefined, timestamp: string): Promise<void>;
+    writeRawContent(content: string, meta: {
+        id: string;
+        typeId: string;
+        roleId: string;
+        executionId: string;
+        contentHash: string;
+        kind: string;
+        path: string;
+        timestamp: string;
+    }): Promise<void>;
+    /**
+   * Checks if a file exists in GCS and returns its metadata id if available
+   * @param filePath The path to check
+   * @returns Object with existence flag and id (empty string if not found)
+   */
+    fileExists(filePath: string): Promise<{
+        fileExists: boolean;
+        id: string;
+    }>;
     /**
      * Generates SHA-256 hash of content
      * @param content The content to hash
      * @returns The SHA-256 hash as hex string
      */
     generateContentHash(content: string): string;
-    /**
-     * Checks if a file exists in GCS
-     * @param filePath The path to check
-     * @returns True if file exists, false otherwise
-     */
-    fileExists(filePath: string): Promise<boolean>;
     /**
      * Deletes a file from GCS
      * @param filePath The path to the file to delete
