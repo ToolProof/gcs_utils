@@ -24,6 +24,7 @@ export class CAFS {
      */
     async storeContent(properties) {
         console.log('CAFS.storeContent called with properties:', JSON.stringify(properties, null, 2));
+        return;
         const folder = '';
         const resourceId = '';
         const content = '';
