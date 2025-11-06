@@ -46,7 +46,7 @@ export class CAFS {
         console.log('CAFS.storeContent called with properties:', JSON.stringify(meta, null, 2));
         const folder = meta.typeId;
         const resourceId = meta.id;
-        const content = JSON.stringify(data);
+        const content = data;
         const metadata = {} as any;
         try {
             // Validate content size
