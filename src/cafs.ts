@@ -67,7 +67,7 @@ export class CAFS {
             let pointer = '';
 
             if (!fileExists.fileExists) {
-                pointer = fileExists.id;
+                pointer = meta.id;
 
                 // Store content in GCS
                 await this.gcsUtils.writeRawContent(content,
@@ -80,7 +80,7 @@ export class CAFS {
                     }
                 );
             } else {
-                pointer = meta.id;
+                pointer = fileExists.id;
             }
 
             await this.gcsUtils.writeToFirestore(
