@@ -42,12 +42,11 @@ export class CAFS {
             executionId: string;
             exposedData: string;
         }
-    ) {
+    ): Promise<CAFSOperationResult> {
         console.log('CAFS.storeContent called with properties:', JSON.stringify(properties, null, 2));
-        return;
-        const folder = '';
-        const resourceId = '';
-        const content = '';
+        const folder = properties.typeId;
+        const resourceId = properties.id;
+        const content = properties.exposedData;
         const metadata = {} as any;
         try {
             // Validate content size
